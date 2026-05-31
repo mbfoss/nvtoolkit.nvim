@@ -126,4 +126,40 @@ function M.trailing_fixed_wrap(ms, fn)
     end
 end
 
+---Create a trailing debounce wrapper.
+---
+---The wrapped function executes once after `ms` milliseconds have elapsed
+---since the **last** call. Every new call resets the timer.
+---
+---Behavior:
+---  - Leading execution: no
+---  - Trailing execution: yes
+---  - Timer resets on repeated calls: yes
+---
+---@param ms number Wait duration in milliseconds.
+---@param fn function Function to execute.
+---@return function wrapped Wrapped function.
+function M.debounce_wrap(ms, fn)
+    local timer = nil
+
+    return function()
+        if timer then
+            if not timer:is_closing() then timer:stop(); timer:close() end
+            timer = nil
+        end
+        local t = uv.new_timer()
+        assert(t)
+        timer = t
+        t:start(ms, 0, function()
+            vim.schedule(function()
+                if not t:is_closing() then t:close() end
+                timer = nil
+                if not _is_exiting() then
+                    fn()
+                end
+            end)
+        end)
+    end
+end
+
 return M
